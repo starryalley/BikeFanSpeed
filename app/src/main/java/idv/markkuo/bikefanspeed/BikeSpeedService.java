@@ -37,6 +37,10 @@ public class BikeSpeedService extends Service {
     // m/s to km/h ratio
     private static final BigDecimal msToKmSRatio = new BigDecimal(3.6);
 
+    // bike speed threshhold
+    private static final float speedThreadLow = 10.0f;
+    private static final float speedThreadHigh = 24.0f;
+
     private AntPluginPcc.IPluginAccessResultReceiver<AntPlusBikeSpeedDistancePcc> mResultReceiver = new AntPluginPcc.IPluginAccessResultReceiver<AntPlusBikeSpeedDistancePcc>() {
         @Override
         public void onResultReceived(AntPlusBikeSpeedDistancePcc result,
@@ -177,9 +181,9 @@ public class BikeSpeedService extends Service {
 
         @Override
         protected Void doInBackground(Float... speed) {
-            if (speed[0] < 3.0f) {
+            if (speed[0] < speedThreadLow) {
                 setFanSpeed(FanSpeed.FAN_STOP);
-            } else if (speed[0] < 15.0f) {
+            } else if (speed[0] < speedThreadHigh) {
                 setFanSpeed(FanSpeed.FAN_1);
             } else {
                 setFanSpeed(FanSpeed.FAN_2);
