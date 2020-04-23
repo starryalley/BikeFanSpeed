@@ -25,10 +25,11 @@ import java.net.URL;
 import java.util.EnumSet;
 
 public class BikeSpeedService extends Service {
-    private static final String TAG = "BikeSpeedService";
-    private static final int ONGOING_NOTIFICATION_ID = 9999;
+    private static final String TAG = BikeSpeedService.class.getSimpleName();
+    private static final int ONGOING_NOTIFICATION_ID = 8888;
     private static final String CHANNEL_DEFAULT_IMPORTANCE = "bike_fan_speed_channel";
 
+    // Ant+ sensors
     AntPlusBikeSpeedDistancePcc bsdPcc = null;
     PccReleaseHandle<AntPlusBikeSpeedDistancePcc> bsdReleaseHandle = null;
 
@@ -38,8 +39,8 @@ public class BikeSpeedService extends Service {
     private static final BigDecimal msToKmSRatio = new BigDecimal(3.6);
 
     // bike speed threshhold
-    private static final float speedThreadLow = 10.0f;
-    private static final float speedThreadHigh = 24.0f;
+    private static final float speedThreadLow = 5.0f;
+    private static final float speedThreadHigh = 18.0f;
 
     private AntPluginPcc.IPluginAccessResultReceiver<AntPlusBikeSpeedDistancePcc> mResultReceiver = new AntPluginPcc.IPluginAccessResultReceiver<AntPlusBikeSpeedDistancePcc>() {
         @Override
@@ -48,17 +49,17 @@ public class BikeSpeedService extends Service {
             switch (resultCode) {
                 case SUCCESS:
                     bsdPcc = result;
-                    Log.d(TAG, result.getDeviceName() + ": " + initialDeviceState);
-                    // send broadcast
-                    Intent i = new Intent("idv.markkuo.bikefanspeed.ANTDATA");
-                    i.putExtra("service_status", initialDeviceState.toString());
-                    sendBroadcast(i);
-
+                    Log.i(TAG, result.getDeviceName() + ": " + initialDeviceState);
                     subscribeToEvents();
                     break;
                 default:
-                    Log.e(TAG,  " error:" + initialDeviceState + ", resultCode" + resultCode);
+                    Log.w(TAG,  "state changed:" + initialDeviceState + ", resultCode:" + resultCode);
             }
+            // send broadcast
+            Intent i = new Intent("idv.markkuo.bikefanspeed.ANTDATA");
+            i.putExtra("service_status", initialDeviceState.toString());
+            sendBroadcast(i);
+
         }
 
         private void subscribeToEvents() {
@@ -68,7 +69,7 @@ public class BikeSpeedService extends Service {
                                                  final EnumSet<EventFlag> eventFlags, final BigDecimal calculatedSpeed) {
                     // convert m/s to km/h
                     float speed = calculatedSpeed.multiply(msToKmSRatio).floatValue();
-                    Log.d(TAG, "Speed:" + speed);
+                    Log.v(TAG, "Speed:" + speed);
                     // update fan speed according to this speed
                     new FanSpeedTask().execute(speed);
 
@@ -104,17 +105,14 @@ public class BikeSpeedService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        //TODO do something useful
         Log.d(TAG, "Service onStartCommand");
-        return Service.START_STICKY;
+        return Service.START_NOT_STICKY;
     }
 
     @Override
     public void onCreate() {
         Log.d(TAG, "Service started");
         super.onCreate();
-
-        initAntPlus();
 
         Intent notificationIntent = new Intent(this, BikeSpeedService.class);
         PendingIntent pendingIntent =
@@ -130,20 +128,23 @@ public class BikeSpeedService extends Service {
         // build a notification
         Notification notification =
                 new Notification.Builder(this, CHANNEL_DEFAULT_IMPORTANCE)
-                        .setContentTitle("Bike FanSpeed control")
+                        .setContentTitle(getText(R.string.app_name))
                         .setContentText("Active")
                         //.setSmallIcon(R.drawable.icon)
                         .setContentIntent(pendingIntent)
-                        .setTicker("Bike FanSpeed")
+                        .setTicker(getText(R.string.app_name))
                         .build();
         // start this service as a foreground one
         startForeground(ONGOING_NOTIFICATION_ID, notification);
+
+        initAntPlus();
     }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         Log.d(TAG, "onTaskRemoved called");
         super.onTaskRemoved(rootIntent);
+        stopForeground(true);
         stopSelf();
     }
 
@@ -164,13 +165,18 @@ public class BikeSpeedService extends Service {
         // starts speed sensor search
         bsdReleaseHandle = AntPlusBikeSpeedDistancePcc.requestAccess(this, 0, 0, false,
                 mResultReceiver, mDeviceStateChangeReceiver);
+
+        // send initial state for UI
+        Intent i = new Intent("idv.markkuo.bikefanspeed.ANTDATA");
+        i.putExtra("service_status", "SEARCHING");
+        sendBroadcast(i);
     }
 
     // last speed
     private FanSpeed lastSpeed = FanSpeed.FAN_STOP;
 
     // fan speed supported
-    public enum FanSpeed {
+    enum FanSpeed {
         FAN_STOP,
         FAN_1,
         FAN_2,

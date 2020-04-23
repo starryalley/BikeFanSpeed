@@ -3,6 +3,7 @@ package idv.markkuo.bikefanspeed;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
+import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -14,7 +15,7 @@ import android.widget.Button;
 import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "MainActivity";
+    private static final String TAG = MainActivity.class.getSimpleName();
 
     private TextView tv_sensorState;
     private TextView tv_timestamp, tv_speed, tv_fanspeed;
@@ -32,6 +33,11 @@ public class MainActivity extends AppCompatActivity {
         tv_fanspeed = (TextView)findViewById(R.id.FanSpeedText);
         tv_timestamp = (TextView)findViewById(R.id.TimestampText);
         btn_service = (Button)findViewById(R.id.ServiceButton);
+
+        if (isServiceRunning(BikeSpeedService.class)) {
+            Log.w(TAG, "Service already started");
+            serviceStarted = true;
+        }
 
         btn_service.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -73,13 +79,23 @@ public class MainActivity extends AppCompatActivity {
         tv_timestamp.setText(getText(R.string.no_data));
     }
 
+    private boolean isServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private class MainActivityReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String statusString = intent.getStringExtra("service_status");
             final BikeSpeedService.FanSpeed fanSpeed = (BikeSpeedService.FanSpeed) intent.getSerializableExtra("fan_speed");
-            final float speed = intent.getFloatExtra("speed", 0.0f);
-            final long timestamp = intent.getLongExtra("timestamp", 0);
+            final float speed = intent.getFloatExtra("speed", -1.0f);
+            final long timestamp = intent.getLongExtra("timestamp", -1);
 
             runOnUiThread(new Runnable() {
                 @SuppressLint("DefaultLocale")
@@ -100,8 +116,10 @@ public class MainActivity extends AppCompatActivity {
                                 break;
                         }
                     }
-                    tv_speed.setText(String.format("%.02f", speed));
-                    tv_timestamp.setText(String.valueOf(timestamp));
+                    if (speed >= 0.0f)
+                        tv_speed.setText(String.format("%.02f", speed));
+                    if (timestamp >= 0)
+                        tv_timestamp.setText(String.valueOf(timestamp));
                 }
             });
         }
