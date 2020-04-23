@@ -39,8 +39,8 @@ public class BikeSpeedService extends Service {
     private static final BigDecimal msToKmSRatio = new BigDecimal(3.6);
 
     // bike speed threshhold
-    private static final float speedThreadLow = 5.0f;
-    private static final float speedThreadHigh = 18.0f;
+    private static final float speedThreadLow = 3.0f;
+    private static final float speedThreadHigh = 10.0f;
 
     private AntPluginPcc.IPluginAccessResultReceiver<AntPlusBikeSpeedDistancePcc> mResultReceiver = new AntPluginPcc.IPluginAccessResultReceiver<AntPlusBikeSpeedDistancePcc>() {
         @Override
