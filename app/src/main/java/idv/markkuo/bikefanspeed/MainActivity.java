@@ -22,19 +22,20 @@ public class MainActivity extends AppCompatActivity {
     private Button btn_service;
 
     private boolean serviceStarted = false;
+    private MainActivityReceiver receiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        tv_sensorState = (TextView)findViewById(R.id.SensorStateText);
-        tv_speed = (TextView)findViewById(R.id.SpeedText);
-        tv_fanspeed = (TextView)findViewById(R.id.FanSpeedText);
-        tv_timestamp = (TextView)findViewById(R.id.TimestampText);
-        btn_service = (Button)findViewById(R.id.ServiceButton);
+        tv_sensorState = findViewById(R.id.SensorStateText);
+        tv_speed = findViewById(R.id.SpeedText);
+        tv_fanspeed = findViewById(R.id.FanSpeedText);
+        tv_timestamp = findViewById(R.id.TimestampText);
+        btn_service = findViewById(R.id.ServiceButton);
 
-        if (isServiceRunning(BikeSpeedService.class)) {
+        if (isServiceRunning()) {
             Log.w(TAG, "Service already started");
             serviceStarted = true;
         }
@@ -51,25 +52,43 @@ public class MainActivity extends AppCompatActivity {
                     MainActivity.this.stopService(i);
                 }
                 serviceStarted = !serviceStarted;
-                // update the title
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        resetUi();
-                        if (serviceStarted)
-                            btn_service.setText(getText(R.string.stop_service));
-                        else
-                            btn_service.setText(getText(R.string.start_service));
-                    }
-                });
+                updateButtonState();
             }
         });
 
         // register intent from our service
-        MainActivityReceiver receiver = new MainActivityReceiver();
+        receiver = new MainActivityReceiver();
         IntentFilter filter = new IntentFilter();
         filter.addAction("idv.markkuo.bikefanspeed.ANTDATA");
         registerReceiver(receiver, filter);
+    }
+
+    private void updateButtonState() {
+        // update the title
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                resetUi();
+                if (serviceStarted)
+                    btn_service.setText(getText(R.string.stop_service));
+                else
+                    btn_service.setText(getText(R.string.start_service));
+            }
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        serviceStarted = isServiceRunning();
+        updateButtonState();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        unregisterReceiver(receiver);
     }
 
     private void resetUi() {
@@ -79,10 +98,10 @@ public class MainActivity extends AppCompatActivity {
         tv_timestamp.setText(getText(R.string.no_data));
     }
 
-    private boolean isServiceRunning(Class<?> serviceClass) {
+    private boolean isServiceRunning() {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
+            if (BikeSpeedService.class.getName().equals(service.service.getClassName())) {
                 return true;
             }
         }

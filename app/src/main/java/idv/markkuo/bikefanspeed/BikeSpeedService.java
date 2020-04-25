@@ -30,30 +30,28 @@ public class BikeSpeedService extends Service {
     private static final String CHANNEL_DEFAULT_IMPORTANCE = "bike_fan_speed_channel";
 
     // Ant+ sensors
-    AntPlusBikeSpeedDistancePcc bsdPcc = null;
-    PccReleaseHandle<AntPlusBikeSpeedDistancePcc> bsdReleaseHandle = null;
+    private AntPlusBikeSpeedDistancePcc bsdPcc = null;
+    private PccReleaseHandle<AntPlusBikeSpeedDistancePcc> bsdReleaseHandle = null;
 
     // 700x23c circumference in meter
-    private static final BigDecimal circumference = new BigDecimal(2.095);
+    private static final BigDecimal CIRCUMFERENCE = new BigDecimal(2.095);
     // m/s to km/h ratio
-    private static final BigDecimal msToKmSRatio = new BigDecimal(3.6);
+    private static final BigDecimal MS_TO_KMS_RATIO = new BigDecimal(3.6);
 
-    // bike speed threshhold
-    private static final float speedThreadLow = 3.0f;
-    private static final float speedThreadHigh = 10.0f;
+    // bike speed threshold
+    private static final float SPEED_THRESHOLD_LOW = 3.0f;
+    private static final float SPEED_THRESHOLD_HIGH = 10.0f;
 
     private AntPluginPcc.IPluginAccessResultReceiver<AntPlusBikeSpeedDistancePcc> mResultReceiver = new AntPluginPcc.IPluginAccessResultReceiver<AntPlusBikeSpeedDistancePcc>() {
         @Override
         public void onResultReceived(AntPlusBikeSpeedDistancePcc result,
                                      RequestAccessResult resultCode, DeviceState initialDeviceState) {
-            switch (resultCode) {
-                case SUCCESS:
-                    bsdPcc = result;
-                    Log.i(TAG, result.getDeviceName() + ": " + initialDeviceState);
-                    subscribeToEvents();
-                    break;
-                default:
-                    Log.w(TAG,  "state changed:" + initialDeviceState + ", resultCode:" + resultCode);
+            if (resultCode == RequestAccessResult.SUCCESS) {
+                bsdPcc = result;
+                Log.i(TAG, result.getDeviceName() + ": " + initialDeviceState);
+                subscribeToEvents();
+            } else {
+                Log.w(TAG, "state changed:" + initialDeviceState + ", resultCode:" + resultCode);
             }
             // send broadcast
             Intent i = new Intent("idv.markkuo.bikefanspeed.ANTDATA");
@@ -63,12 +61,12 @@ public class BikeSpeedService extends Service {
         }
 
         private void subscribeToEvents() {
-            bsdPcc.subscribeCalculatedSpeedEvent(new AntPlusBikeSpeedDistancePcc.CalculatedSpeedReceiver(circumference) {
+            bsdPcc.subscribeCalculatedSpeedEvent(new AntPlusBikeSpeedDistancePcc.CalculatedSpeedReceiver(CIRCUMFERENCE) {
                 @Override
                 public void onNewCalculatedSpeed(final long estTimestamp,
                                                  final EnumSet<EventFlag> eventFlags, final BigDecimal calculatedSpeed) {
                     // convert m/s to km/h
-                    float speed = calculatedSpeed.multiply(msToKmSRatio).floatValue();
+                    float speed = calculatedSpeed.multiply(MS_TO_KMS_RATIO).floatValue();
                     Log.v(TAG, "Speed:" + speed);
                     // update fan speed according to this speed
                     new FanSpeedTask().execute(speed);
@@ -187,9 +185,9 @@ public class BikeSpeedService extends Service {
 
         @Override
         protected Void doInBackground(Float... speed) {
-            if (speed[0] < speedThreadLow) {
+            if (speed[0] < SPEED_THRESHOLD_LOW) {
                 setFanSpeed(FanSpeed.FAN_STOP);
-            } else if (speed[0] < speedThreadHigh) {
+            } else if (speed[0] < SPEED_THRESHOLD_HIGH) {
                 setFanSpeed(FanSpeed.FAN_1);
             } else {
                 setFanSpeed(FanSpeed.FAN_2);
@@ -216,7 +214,7 @@ public class BikeSpeedService extends Service {
                         setServoPosition(55);
                         try {
                             Thread.sleep(500);
-                        } catch (Exception e) {
+                        } catch (Exception ignored) {
                         }
                     }
                     setServoPosition(10);
