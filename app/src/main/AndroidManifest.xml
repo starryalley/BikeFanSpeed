@@ -22,6 +22,9 @@
         <service android:name=".BikeSpeedService"
             android:stopWithTask="true"
             android:label="BikeSpeedService">
+            <intent-filter>
+                <action android:name="idv.markkuo.bikefanspeed.fanspeed" />
+            </intent-filter>
         </service>
     </application>
 

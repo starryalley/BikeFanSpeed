@@ -4,11 +4,15 @@
     <string name="stop_service">Stop Service</string>
     <string name="please_start">Please Start Service</string>
     <string name="no_data">---</string>
+    <string name="current_power">Current Power (W)</string>
     <string name="current_speed">Current Speed on 700x23C tire (km/h)</string>
+    <string name="power_sensor">Cycling Power Sensor</string>
     <string name="speed_sensor">Bike Speed Sensor</string>
     <string name="timestamp">Sensor TimeStamp</string>
     <string name="fan_speed">Fan Speed</string>
     <string name="fan_stopped">Off</string>
     <string name="fan_low">Low</string>
     <string name="fan_high">High</string>
+    <string name="use_power">Use Cycling Power</string>
+    <string name="manual_fan">Manual Fan Speed</string>
 </resources>

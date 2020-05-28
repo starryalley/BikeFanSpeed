@@ -12,16 +12,22 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
 
+    private TextView tv_sensor_type, tv_sensor_info;
     private TextView tv_sensorState;
     private TextView tv_timestamp, tv_speed, tv_fanspeed;
     private Button btn_service;
+    private Switch switch_power, switch_manual;
+    private Button btn_fan_off, btn_fan_low, btn_fan_high;
 
     private boolean serviceStarted = false;
+
     private MainActivityReceiver receiver;
 
     @Override
@@ -29,11 +35,19 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        tv_sensor_type = findViewById(R.id.text_sensor_type);
+        tv_sensor_info = findViewById(R.id.text_sensor_info);
         tv_sensorState = findViewById(R.id.SensorStateText);
         tv_speed = findViewById(R.id.SpeedText);
         tv_fanspeed = findViewById(R.id.FanSpeedText);
         tv_timestamp = findViewById(R.id.TimestampText);
         btn_service = findViewById(R.id.ServiceButton);
+        switch_power = findViewById(R.id.switch_power);
+        switch_manual = findViewById(R.id.switch_manual);
+        btn_fan_off = findViewById(R.id.button_off);
+        btn_fan_low = findViewById(R.id.button_low);
+        btn_fan_high = findViewById(R.id.button_high);
+
 
         if (isServiceRunning()) {
             Log.w(TAG, "Service already started");
@@ -56,6 +70,70 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        switch_power.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    tv_sensor_type.setText(getText(R.string.power_sensor));
+                    tv_sensor_info.setText(getText(R.string.current_power));
+                } else {
+                    tv_sensor_type.setText(getText(R.string.speed_sensor));
+                    tv_sensor_info.setText(getText(R.string.current_speed));
+                }
+                Intent i = new Intent("idv.markkuo.bikefanspeed.fanspeed");
+                i.putExtra("use_power", isChecked);
+                sendBroadcast(i);
+            }
+        });
+
+        switch_manual.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                btn_fan_off.setEnabled(isChecked);
+                btn_fan_low.setEnabled(isChecked);
+                btn_fan_high.setEnabled(isChecked);
+                Intent i = new Intent("idv.markkuo.bikefanspeed.fanspeed");
+                i.putExtra("manual", isChecked);
+                sendBroadcast(i);
+            }
+        });
+
+        btn_fan_off.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (serviceStarted) {
+                    Intent i = new Intent("idv.markkuo.bikefanspeed.fanspeed");
+                    i.putExtra("fanspeed", BikeSpeedService.FanSpeed.FAN_STOP);
+                    sendBroadcast(i);
+                    sendBroadcast(i);
+                }
+            }
+        });
+
+        btn_fan_low.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (serviceStarted) {
+                    Intent i = new Intent("idv.markkuo.bikefanspeed.fanspeed");
+                    i.putExtra("fanspeed", BikeSpeedService.FanSpeed.FAN_1);
+                    sendBroadcast(i);
+                    sendBroadcast(i);
+                }
+            }
+        });
+
+        btn_fan_high.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (serviceStarted) {
+                    Intent i = new Intent("idv.markkuo.bikefanspeed.fanspeed");
+                    i.putExtra("fanspeed", BikeSpeedService.FanSpeed.FAN_2);
+                    sendBroadcast(i);
+                    sendBroadcast(i);
+                }
+            }
+        });
+
         // register intent from our service
         receiver = new MainActivityReceiver();
         IntentFilter filter = new IntentFilter();
@@ -69,10 +147,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 resetUi();
-                if (serviceStarted)
+                if (serviceStarted) {
                     btn_service.setText(getText(R.string.stop_service));
-                else
+                    switch_manual.setEnabled(true);
+                    switch_power.setEnabled(true);
+                } else {
                     btn_service.setText(getText(R.string.start_service));
+                    switch_manual.setEnabled(false);
+                    switch_power.setEnabled(false);
+                }
             }
         });
     }
